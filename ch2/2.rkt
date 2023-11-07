@@ -401,7 +401,7 @@
   (accumulate (lambda (x y) (cons (p x) y)) nil sequence))
 (define (append seq1 seq2)
   (accumulate cons seq2 seq1))
-(define (length sequence)
+(define (length-- sequence)
   (accumulate + 0 sequence))
 ;2.34
 (define (horner-eval x co-sq)
@@ -489,40 +489,50 @@
        (enumerate-interval 2 (- i 1))))
     (enumerate-interval 3 n))))
 ;2.42
+(define (length ls)
+  (if (null? ls)
+      0
+      (+ 1 (length (cdr ls)))))
+
 (define empty-board nil)
+
 (define (adjoin-position new-row k rest-of-queens)
-  (if (= 0 (length (filter
-                    (lambda (x) (= x new-row))
-                    rest-of-queens)))
-      (append rest-of-queens (list new-row))
-      nil))
+  (append rest-of-queens (list new-row)))
+
 (define (get x ls)
   (if (= x 1)
       (car ls)
       (get (- x 1) (cdr ls))))
+
 (define (drop-last ls)
-  (if (= 1 (length ls))
-      nil
-      (cons (car ls) (drop-last (cdr ls)))))
-(define (neighbour-check xs)
-  (define (nc x y)
-    (if (or (= -1 (car y))
-            (and (cdr y)
-                 (not (= x (car y)))
-                 (not (= x (- (car y) 1)))
-                 (not (= x (+ (car y) 1)))))
-        (cons x #t)
-        (cons x #f)))
-  (fold-right nc (cons -1 #t) xs))
-;(define (diag-check ls)
-; (define (dc x y)
-;    (if (or (= -1 (car y))
-;           ))))
+  (if (> (length ls) 1)
+      (cons (car ls) (drop-last (cdr ls)))
+      nil))
+
+(define (no-same-row pos last)
+  (if (= 1 (length pos))
+      #t
+      (if (= (car pos) last)
+          #f
+          (no-same-row (cdr pos) last))))
+
+(define (no-same-diag pos last)
+  (define (diag-iter ls k)
+    (if (= k 0)
+        #t
+        (if (= k (abs (- (car ls) last)))
+            #f
+            (diag-iter (cdr ls) (- k 1)))))
+  (diag-iter pos (- (length pos) 1)))
+  
 (define (safe? k positions)
-  (or (= 1 (length positions))
-      (and (> (length positions) 0)
-           (let ((x (get k positions)))
-             (> x 0)))))
+  (or (= 1 k)
+      (and (>= (abs (- (get k positions)
+                       (get (- k 1) positions)))
+               2)
+           (no-same-row positions (get k positions))
+           (no-same-diag positions (get k positions)))))
+      
 (define (queens board-size)
   (define (queen-cols k)
     (if (= k 0)
@@ -537,3 +547,20 @@
                  (enumerate-interval 1 board-size)))
           (queen-cols (- k 1))))))
   (queen-cols board-size))
+;2.43
+(define (queens2.43 board-size)
+  (define (queen-cols k)
+    (if (= k 0)
+        (list empty-board)
+        (filter
+         (lambda (positions) (safe? k positions))
+         (flatmap
+          (lambda (new-row)
+            (map (lambda (rest-of-queens)
+                   (adjoin-position new-row k rest-of-queens))
+                 (queen-cols (- k 1))))
+          (enumerate-interval 1 board-size)))))
+  (queen-cols board-size))
+
+(#%require sicp-pict)
+ 
